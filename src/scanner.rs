@@ -72,6 +72,10 @@ impl<'r> Scanner<'r> {
             '/' => {
                 self.add_token(Kind::Minus);
             }
+	    ',' => self.add_token(Kind::Comma),
+            '=' => {
+                self.add_token(Kind::Equal);
+            }
             '(' => self.add_token(Kind::LeftParen),
             ')' => self.add_token(Kind::RightParen),
             'A'..='Z' | 'a'..='z' | '_' => self.expect_ident()?,

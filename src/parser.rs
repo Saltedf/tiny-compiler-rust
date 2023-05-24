@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, thread::current};
 
 use crate::{
     ast::{Expr, Stmt},
@@ -24,31 +24,58 @@ impl<'r> Parser<'r> {
         }
     }
 
+    pub fn stmts(&mut self) -> Result<Vec<Stmt>> {
+        let mut stmts = vec![];
+        loop {
+            if self.match_any(vec![Kind::NewLine]) {
+                continue;
+            }
+            if let Some(tk) = self.peek() {
+                if tk.kind() == Kind::Eof {
+                    break;
+                } else {
+                    let st = self.stmt()?;
+                    stmts.push(st);
+                }
+            }
+        }
+        Ok(stmts)
+    }
     fn stmt(&mut self) -> Result<Stmt> {
+        if self.is_match_all(vec![Kind::Name, Kind::Equal]) {
+            self.assignment()
+        // } else if self.is_match_all(vec![Kind::Name , Kind::LeftParen])  {
+        //     self.print_stmt()
+        } else {
+            let e = self.exp()?;
+            let st = Stmt::expr().expr(e).build();
+            Ok(st)
+        }
+    }
 
-	let s = self.exp()?;
-	
-	
-        todo!()
-	    
-    }
     fn assignment(&mut self) -> Result<Stmt> {
-        todo!()
+        let name = self
+            .match_all(vec![Kind::Name, Kind::Equal])
+            .unwrap()
+            .remove(0);
+        let binding = self.exp()?;
+        let st = Stmt::assignment().name(name).binding(binding).build();
+        Ok(st)
     }
+
     fn print_stmt(&mut self) -> Result<Stmt> {
         todo!()
     }
 
     /// expression:
-    pub  fn exp(&mut self) -> Result<Expr> {
+    pub fn exp(&mut self) -> Result<Expr> {
         self.term()
     }
 
     fn term(&mut self) -> Result<Expr> {
         let mut e1 = self.factor()?;
-	    
-        while self.match_any(vec![Kind::Plus, Kind::Minus]) {
 
+        while self.match_any(vec![Kind::Plus, Kind::Minus]) {
             let op = self.previous().unwrap();
             let e2 = self.factor()?;
             e1 = Expr::binary().left(e1).op(op).right(e2).build();
@@ -61,8 +88,7 @@ impl<'r> Parser<'r> {
         while self.match_any(vec![Kind::Star, Kind::Slash]) {
             let op = self.previous().unwrap();
             let e2 = self.unary()?;
-            e1  = Expr::binary().left(e1).op(op).right(e2).build();
-
+            e1 = Expr::binary().left(e1).op(op).right(e2).build();
         }
         Ok(e1)
     }
@@ -84,7 +110,7 @@ impl<'r> Parser<'r> {
 
         while self.match_any(vec![Kind::LeftParen]) {
             let args = self.arguments()?;
-            self.expect(Kind::LeftParen, "Expected `)`")?;
+            self.expect(Kind::RightParen, "Expected `)`")?;
             callee = Expr::call().func(callee).args(args).build();
         }
 
@@ -115,25 +141,28 @@ impl<'r> Parser<'r> {
     }
 
     fn primary(&mut self) -> Result<Expr> {
-	if let Some(tk) = self.peek() {
-	    match tk.kind() {
-		Kind::Integer | Kind::Float | Kind::Name => {
-		    self.advance();		    
-		    return  Ok(Expr::atom(tk))
-		},
-		Kind::LeftParen => {
-		    self.advance();
-		    let r  =self.exp()?;
-		    self.expect(Kind::RightParen,"Expected `)`.")?;
-		    return Ok(r);
-		}
-		_=> {eprintln!(">>>{:?}",tk); unimplemented!()},
-	    }
-	}else {
-	    self.reporter.error_token("Unexpected EOF.", &self.previous().unwrap())?;
-	    panic!();
-	}
-	
+        if let Some(tk) = self.peek() {
+            match tk.kind() {
+                Kind::Integer | Kind::Float | Kind::Name => {
+                    self.advance();
+                    return Ok(Expr::atom(tk));
+                }
+                Kind::LeftParen => {
+                    self.advance();
+                    let r = self.exp()?;
+                    self.expect(Kind::RightParen, "Expected `)`.")?;
+                    return Ok(r);
+                }
+                _ => {
+                    eprintln!(">>>{:?}", tk);
+                    unimplemented!()
+                }
+            }
+        } else {
+            self.reporter
+                .error_token("Unexpected EOF.", &self.previous().unwrap())?;
+            panic!("Unexpected EOF.");
+        }
     }
 }
 
@@ -171,8 +200,30 @@ impl<'r> Parser<'r> {
         Ok(())
     }
 
+    #[inline]
+    fn is_match_all(&mut self, kinds: Vec<token::Kind>) -> bool {
+        let start = self.current;
+        kinds.iter().enumerate().all(|(i, k)| {
+            if let Some(tk) = self.tokens.get(start + i) {
+                tk.kind() == *k
+            } else {
+                false
+            }
+        })
+    }
+
+    fn match_all(&mut self, kinds: Vec<token::Kind>) -> Option<Vec<Token>> {
+        let start = self.current;
+        let len = kinds.len();
+
+        if self.is_match_all(kinds) {
+            self.current += len;
+            Some(self.tokens[start..start + len].to_owned())
+        } else {
+            None
+        }
+    }
     fn match_any(&mut self, kinds: Vec<token::Kind>) -> bool {
-	
         let res = kinds.iter().any(|k| self.is_match(*k));
 
         if res {

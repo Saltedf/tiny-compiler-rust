@@ -130,19 +130,19 @@ pub struct Assign {
 }
 
 impl Assign {
-    fn name(mut self, v: Token) -> Self {
+    pub fn name(mut self, v: Token) -> Self {
         self.ranges.push(v.range());
         self.name = Some(v);
         self
     }
 
-    fn arg(mut self, b: Expr) -> Self {
+    pub fn binding(mut self, b: Expr) -> Self {
         self.ranges.push(b.range());
         self.binding = Some(b);
         self
     }
 
-    fn build(mut self) -> Stmt {
+    pub fn build(mut self) -> Stmt {
         let stmt = StmtData::Assign {
             name: self.name.take().expect("`var` is not initialized."),
             binding: self.binding.take().expect("`binding` is not initialized."),
@@ -163,13 +163,13 @@ pub struct ExprStmt {
 }
 
 impl ExprStmt {
-    fn expr(mut self, e: Expr) -> Self {
+    pub fn expr(mut self, e: Expr) -> Self {
         self.ranges.push(e.range());
         self.expr = Some(e);
         self
     }
 
-    fn build(mut self) -> Stmt {
+    pub fn build(mut self) -> Stmt {
         let stmt = StmtData::Expr(self.expr.take().expect("`expr` is not initialized."));
 
         // normalize the form of range

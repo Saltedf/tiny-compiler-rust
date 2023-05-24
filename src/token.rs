@@ -56,7 +56,7 @@ pub enum Kind {
     Eof,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Token {
     kind: Kind,
     lexeme: String,

@@ -1,6 +1,7 @@
 use std::{error::Error, fs::read_to_string, path::PathBuf, process::exit, str::FromStr};
 
 use parser::Parser;
+use pass::rco::RemoveComplexOperands;
 
 use crate::reporter::ErrorReporter;
 
@@ -10,6 +11,8 @@ mod parser;
 mod reporter;
 mod scanner;
 mod token;
+mod env;
+mod pass;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -23,14 +26,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let scanner = scanner::Scanner::new(&file, &reporter);
     let tokens = scanner.scan_tokens()?;
-    tokens
-        .iter()
-        .for_each(|tk| println!("{:?} {}", tk.kind(), tk.lexeme()));
-    let mut p = Parser::new(tokens,&reporter);
-    
-    let e= p.exp()?;
-    println!("{:#?}",e);
+    // tokens
+    //     .iter()
+    //     .for_each(|tk| println!("{:?} {}", tk.kind(), tk.lexeme()));
+    let mut p = Parser::new(tokens, &reporter);
 
-    
+    let sts = p.stmts()?;
+    for s in &sts {
+        println!("{}", s);
+    }
+    println!("============RCO============");
+    let stmts = RemoveComplexOperands::new().rco_stmts(sts);
+    for s in &stmts {
+        println!("{}", s);
+    }    
+
     Ok(())
 }
