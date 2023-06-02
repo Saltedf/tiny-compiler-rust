@@ -1,18 +1,22 @@
 use std::{error::Error, fs::read_to_string, path::PathBuf, process::exit, str::FromStr};
-
 use parser::Parser;
 use pass::rco::RemoveComplexOperands;
-
-use crate::reporter::ErrorReporter;
+use crate::{
+    pass::{
+        allocate::Allocation, assign_homes::AssignHomes, build_interference::BuildInterference,
+        liveness::UncoverLive, patch::PatchInstructions, select_instructions::SelectInstructions, gen::CodeGen,
+    },
+    reporter::ErrorReporter,
+};
 
 mod ast;
 mod ast_builder;
+mod env;
 mod parser;
+mod pass;
 mod reporter;
 mod scanner;
 mod token;
-mod env;
-mod pass;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -39,7 +43,46 @@ fn main() -> Result<(), Box<dyn Error>> {
     let stmts = RemoveComplexOperands::new().rco_stmts(sts);
     for s in &stmts {
         println!("{}", s);
-    }    
+    }
+    println!("============Select Instrucitons===========");
+    let instrs = SelectInstructions::new().select_stmts(stmts);
+    for inst in &instrs {
+        println!("{}", inst);
+    }
+    println!("============Uncovered Liveness===========");
+    let inst_live_after = UncoverLive::uncover_live(instrs);
+    let mut instrs = vec![];
+    for (inst, liveafter) in &inst_live_after {
+        println!("{}", inst);
+        instrs.push(inst.clone());
+        println!(" {}", liveafter);
+    }
 
+    println!("============Interference Graph===========");
+    let (graph,move_graph)  = BuildInterference::new().build_graph(inst_live_after);
+
+    println!("============Reg Allocation===========");
+    let (mapping,frame) = Allocation::new(graph,move_graph).color_graph();
+    for (v, loc) in &mapping {
+        println!("{} -> {}", v, loc);
+    }
+
+    println!("============Assign homes===========");
+    let instrs = AssignHomes::new(instrs, mapping).assign_homes();
+    for inst in &instrs {
+        println!("{}", inst);
+    }
+
+    println!("============Patch instructions===========");
+    let instrs = PatchInstructions::new(instrs).patch_instructions();
+    for inst in &instrs {
+        println!("{}", inst);
+    }
+    
+    println!("============Code gen===========");
+    let instrs = CodeGen::new(instrs,frame).code_gen();
+    for inst in &instrs {
+        println!("{}", inst);
+    }    
     Ok(())
 }

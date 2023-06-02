@@ -16,7 +16,7 @@ pub struct Stmt {
 
 impl Range for Stmt {
     fn range(&self) -> (usize, usize) {
-        self.range.clone()
+        self.range
     }
 }
 
@@ -58,9 +58,9 @@ pub enum StmtData {
 
 #[derive(Debug)]
 pub struct Expr {
-  pub  data: ExprData,
+    pub data: ExprData,
     /// range: (start, end)
-   pub  range: (usize, usize),
+    pub range: (usize, usize),
 }
 
 impl Display for Expr {
@@ -79,20 +79,20 @@ impl Display for Expr {
                 }
                 write!(f, ")")
             }
-            ExprData::Prim { op, operands } => {
-                write!(f, "({}", op.lexeme())?;
-                for a in operands {
-                    write!(f, " {}", a)?;
-                }
-                write!(f, ")")
+            ExprData::Prim { op, operands } if operands.len() == 2 => {
+                write!(f, "{} {} {}", operands[0], op.lexeme(), operands[1])
             }
+            ExprData::Prim { op, operands } if operands.len() == 1 => {
+                write!(f, "{} {}", op.lexeme(), operands[0])
+            }
+            _ => unimplemented!(),
         }
     }
 }
 
 impl Range for Expr {
     fn range(&self) -> (usize, usize) {
-        self.range.clone()
+        self.range
     }
 }
 
@@ -101,11 +101,17 @@ impl Expr {
         Self { data: expr, range }
     }
 
-
     pub fn is_atom(&self) -> bool {
         match &self.data {
             ExprData::Int(_) | ExprData::Float(_) | ExprData::Name(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_ident(&self) -> Option<&str> {
+        match &self.data {
+            ExprData::Name(id) => Some(id.lexeme()),
+            _ => None,
         }
     }
 

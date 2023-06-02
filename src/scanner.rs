@@ -72,7 +72,7 @@ impl<'r> Scanner<'r> {
             '/' => {
                 self.add_token(Kind::Minus);
             }
-	    ',' => self.add_token(Kind::Comma),
+            ',' => self.add_token(Kind::Comma),
             '=' => {
                 self.add_token(Kind::Equal);
             }
