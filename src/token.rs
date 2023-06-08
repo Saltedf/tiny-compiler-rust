@@ -111,7 +111,7 @@ impl Token {
     pub fn pos(&self) -> usize {
         self.pos
     }
-    pub fn range(&self) -> (usize, usize) {
-        (self.pos, self.len())
-    }
+    // pub fn range(&self) -> (usize, usize) {
+    //     (self.pos, self.len())
+    // }
 }

@@ -31,12 +31,15 @@ impl<'r> Parser<'r> {
                 continue;
             }
             if let Some(tk) = self.peek() {
-                if tk.kind() == Kind::Eof {
-                    break;
-                } else {
-                    let st = self.stmt()?;
-                    stmts.push(st);
-                }
+		match tk.kind() {
+		    Kind::Eof | Kind::RightBrace => {
+			break;
+		    },
+		    _ => {
+			let st = self.stmt()?;
+			stmts.push(st);
+		    }
+		}
             }
         }
         Ok(stmts)
@@ -46,11 +49,33 @@ impl<'r> Parser<'r> {
             self.assignment()
         // } else if self.is_match_all(vec![Kind::Name , Kind::LeftParen])  {
         //     self.print_stmt()
-        } else {
+        }else if self.match_any(vec![Kind::If]) {
+	    self.if_stmt()
+	} else {
             let e = self.exp()?;
             let st = Stmt::expr().expr(e).build();
             Ok(st)
         }
+    }
+
+    fn if_stmt(&mut self) -> Result<Stmt>{
+
+	let cond = self.exp()?;
+	
+	self.expect(Kind::LeftBrace,"Expected `{`")?;
+	self.expect(Kind::NewLine,"Expected `\n`")?;
+	let then = self.stmts()?;
+	self.expect(Kind::RightBrace,"Expected `}`")?;
+	let mut  builder = Stmt::if_stmt().condition(cond).then(then);
+	if self.match_any(vec![Kind::Else]) {
+	    self.expect(Kind::LeftBrace,"Expected `{`")?;
+	    self.expect(Kind::NewLine,"Expected `\n`")?;
+	    let else_block= self.stmts()?;
+	    self.expect(Kind::RightBrace,"Expected `}`")?;
+	    builder = builder.else_(else_block);
+	}
+	let ifstmt = builder.build();
+	Ok(ifstmt)
     }
 
     fn assignment(&mut self) -> Result<Stmt> {
@@ -69,9 +94,46 @@ impl<'r> Parser<'r> {
 
     /// expression:
     pub fn exp(&mut self) -> Result<Expr> {
-        self.term()
+        self.condition()
+    }
+    fn condition(&mut self) -> Result<Expr> {
+	let mut e = self.logical()?;
+	if self.match_any(vec![Kind::If]) {
+	    let then = self.logical()?;
+	    self.expect(Kind::Else,"Expected `else`")?;
+	    let els = self.logical()?;
+	    e =   Expr::condition().condition(e).then(then).else_(els).build();
+	}
+
+	Ok(e)
     }
 
+
+    /// logical = equality { (and | or) equality }*
+    fn logical(&mut self) -> Result<Expr> {
+	let mut e1 = self.equality()?;
+
+        while self.match_any(vec![Kind::And , Kind::Or]) {
+            let op = self.previous().unwrap();
+            let e2 = self.equality()?;
+            e1 = Expr::binary().left(e1).op(op).right(e2).build();
+        }
+        Ok(e1)
+    }
+
+    /// Eq / NotEq
+    fn equality(&mut self) -> Result<Expr> {
+	let mut e1 = self.term()?;
+
+        while self.match_any(vec![Kind::EqualEqual, Kind::BangEqual,
+				  Kind::Greater,Kind::GreaterEqual,Kind::Less,Kind::LessEqual]) {
+            let op = self.previous().unwrap();
+            let e2 = self.term()?;
+            e1 = Expr::binary().left(e1).op(op).right(e2).build();
+        }
+        Ok(e1)
+    }
+    
     fn term(&mut self) -> Result<Expr> {
         let mut e1 = self.factor()?;
 
@@ -93,7 +155,7 @@ impl<'r> Parser<'r> {
         Ok(e1)
     }
 
-    // unary          → ( "!" | "-" ) unary | call ;
+    // unary          → ( "not" | "-" ) unary | call ;
     fn unary(&mut self) -> Result<Expr> {
         if self.match_any(vec![Kind::Minus, Kind::Bang]) {
             let op = self.previous().unwrap();
@@ -143,7 +205,7 @@ impl<'r> Parser<'r> {
     fn primary(&mut self) -> Result<Expr> {
         if let Some(tk) = self.peek() {
             match tk.kind() {
-                Kind::Integer | Kind::Float | Kind::Name => {
+                Kind::Integer | Kind::Float | Kind::Name| Kind::True | Kind::False => {
                     self.advance();
                     return Ok(Expr::atom(tk));
                 }
@@ -153,11 +215,9 @@ impl<'r> Parser<'r> {
                     self.expect(Kind::RightParen, "Expected `)`.")?;
                     return Ok(r);
                 }
-                _ => {
-                    eprintln!(">>>{:?}", tk);
-                    unimplemented!()
-                }
+                _ => Err(self.reporter.error_token("Unexpected Token.", &tk).unwrap_err()),
             }
+	    
         } else {
             self.reporter
                 .error_token("Unexpected EOF.", &self.previous().unwrap())?;

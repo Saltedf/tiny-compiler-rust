@@ -1,8 +1,9 @@
-use crate::token::*;
+use crate::{token::*, ast::Range};
 use std::{error::Error, path::PathBuf};
 
 #[derive(Debug)]
 struct ParsingError {
+    
     msg: String,
 }
 
@@ -24,15 +25,44 @@ impl ParsingError {
 
 pub struct ErrorReporter {
     file: Option<PathBuf>,
-    lines: Vec<String>,
+    source: String,
+    lines: Vec<(usize,usize)>,
 }
 
 impl ErrorReporter {
+    
     pub fn new(file: Option<PathBuf>, source: String) -> Self {
-        Self {
+	let mut lines :Vec<(usize,usize)> = vec![];
+	let mut start  = 0_usize;
+	for (pos, ch) in source.chars().enumerate() {
+	    match ch {
+		'\n' => {
+		    lines.push((start,pos));
+		    start = pos + 1;
+		},
+		_=> (),
+	    }
+	}
+	if start < source.len() {
+	    lines.push((start,source.len()))
+	}
+        Self { 
             file,
-            lines: source.split_terminator('\n').map(String::from).collect(),
+	    source,
+            lines,
         }
+    }
+
+    pub fn error_range<S: AsRef<str>+ ?Sized>(&self,range: &dyn Range, msg:&S) -> Result<(), Box<dyn Error>> {
+	let r = range.range();
+	let len  = r.1 - r.0 + 1;
+	
+	if let Some((s,_e)) = self.range2lineno(r) {
+	    self.error(msg,s,r.0,len)
+	}else {
+	    panic!()
+	}
+	
     }
 
     pub fn error_token<S: AsRef<str> + ?Sized>(
@@ -89,7 +119,8 @@ impl ErrorReporter {
         let mut start = file_pos; // inline index
 
         for i in 0..(lineno - 1) {
-            start = start - (self.lines[i].len() + 1);
+	    let len = self.lines[i].1-self.lines[i].0;
+            start = start - (len + 1);
         }
 
         (lineno, start)
@@ -107,10 +138,32 @@ impl ErrorReporter {
             eprintln!("  --> {}:{}:{}", f.display(), lineno, inline_pos + 1);
         }
     }
+
+    
+   
+    fn range2lineno(&self, range: (usize,usize))-> Option<(usize,usize)> {
+	let mut start = None;
+	let mut end =None;
+	for ((s,e),line ) in self.lines.iter().zip(1_usize..) {
+	    if start.is_none() && range.0 >= *s && range.0 < *e {
+		start = Some(line);
+	    }
+	    if end.is_none() && range.1 >= *s && range.1 < *e {
+		end = Some(line);
+	    }
+	}
+
+	match (start, end) {
+	    (Some(s), Some(e)) => Some((s,e)),
+	    _ => None,
+	}
+    }
+	
     #[inline]
     fn display_line(&self, lineno: usize, inline_pos: usize, len: usize) {
         let len = if len == 0 { 1 } else { len };
-        eprintln!("{} | {}", lineno, self.lines[lineno - 1]); // 出错的行
+
+        eprintln!("{} | {}", lineno, self.get_line(lineno)); // 出错的行
         let width = format!("{}", lineno).len(); // 行号数字的长度
         eprintln!(
             // 箭头, 指向出错的部分.
@@ -120,4 +173,9 @@ impl ErrorReporter {
             "^".repeat(len)
         );
     }
+    #[inline]
+    fn get_line(&self, lineno:usize) -> &str {
+	let (start,end) = self.lines[lineno-1];
+	&self.source[start..end]
+    }    
 }

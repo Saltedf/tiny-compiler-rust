@@ -6,6 +6,7 @@ pub mod patch;
 pub mod rco;
 pub mod select_instructions;
 pub mod gen;
+pub mod shrink;
 
 mod frame;
 mod x86;

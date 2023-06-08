@@ -4,13 +4,17 @@ use std::fmt::Formatter;
 use crate::ast_builder::*;
 use crate::token::*;
 
+
+
 pub trait Range {
-    fn range(&self) -> (usize, usize);
+    // lineno, start , end
+    fn range(&self) -> (usize, usize); 
 }
 
 #[derive(Debug)]
 pub struct Stmt {
     pub stmt: StmtData,
+    
     pub range: (usize, usize),
 }
 
@@ -35,6 +39,14 @@ impl Stmt {
             ranges: vec![],
         }
     }
+    pub fn if_stmt() -> IfStmt {
+	IfStmt {
+	    condition: None,
+	    then: vec![],
+	    else_: vec![],
+            ranges: vec![],
+	}
+    }
 }
 
 impl Display for Stmt {
@@ -46,6 +58,21 @@ impl Display for Stmt {
             StmtData::Assign { name, binding } => {
                 write!(f, "{} = {}", name.lexeme(), binding)
             }
+	    StmtData::If { condition, then, else_ } => {
+		write!(f,"if {} {{\n", condition)?;
+		for s in then {
+		    writeln!(f,"{}", s)?;
+		}
+		write!(f,"}}")?;
+		if !else_.is_empty() {
+		    writeln!(f,"else {{")?;
+		    for s in else_ {
+			writeln!(f,"{}", s)?;
+		    }
+		    write!(f,"}}")?;
+		}
+		Ok(())
+	    }
         }
     }
 }
@@ -53,6 +80,11 @@ impl Display for Stmt {
 #[derive(Debug)]
 pub enum StmtData {
     Expr(Expr),
+    If {
+	condition: Expr,
+	then: Vec<Stmt>,
+	else_: Vec<Stmt>,	
+    },
     Assign { name: Token, binding: Expr },
 }
 
@@ -84,8 +116,10 @@ impl Display for Expr {
             }
             ExprData::Prim { op, operands } if operands.len() == 1 => {
                 write!(f, "{} {}", op.lexeme(), operands[0])
-            }
-            _ => unimplemented!(),
+            },
+	    ExprData::Bool(b) => write!(f,"{}",b),
+	    ExprData::Condition { condition, then, else_ } => write!(f, "{} if {} else {}",condition,then,else_),
+            _ => unimplemented!(), 
         }
     }
 }
@@ -136,6 +170,14 @@ impl Expr {
                 data: ExprData::Name(t),
                 range,
             },
+	    Kind::True => Expr {
+                data: ExprData::Bool(true),
+                range,
+            },
+	    Kind::False => Expr {
+                data: ExprData::Bool(false),
+                range,
+            },	    
             _ => {
                 unimplemented!()
             }
@@ -158,10 +200,20 @@ impl Expr {
         }
     }
 
+
     pub fn call() -> FunctionCall {
         FunctionCall {
             func: None,
             args: vec![],
+            ranges: vec![],
+        }
+    }
+
+    pub fn condition() -> Condition {
+        Condition {
+	    condition: None,
+            then: None,
+            else_: None,	    
             ranges: vec![],
         }
     }
@@ -170,6 +222,7 @@ impl Expr {
 #[derive(Debug)]
 pub enum ExprData {
     Int(i64),
+    Bool(bool),
     Float(f64),
     Name(Token),
     /// binary & unary
@@ -181,4 +234,9 @@ pub enum ExprData {
         name: Box<Expr>,
         args: Vec<Expr>,
     },
+    Condition {
+	condition: Box<Expr>,	
+	then: Box<Expr>,
+	else_: Box<Expr>,
+    }
 }

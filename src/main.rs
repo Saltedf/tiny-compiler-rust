@@ -4,9 +4,9 @@ use pass::rco::RemoveComplexOperands;
 use crate::{
     pass::{
         allocate::Allocation, assign_homes::AssignHomes, build_interference::BuildInterference,
-        liveness::UncoverLive, patch::PatchInstructions, select_instructions::SelectInstructions, gen::CodeGen,
+        liveness::UncoverLive, patch::PatchInstructions, select_instructions::SelectInstructions, gen::CodeGen, shrink::Shrink,
     },
-    reporter::ErrorReporter,
+    reporter::ErrorReporter, type_checking::TypeChecker,
 };
 
 mod ast;
@@ -17,6 +17,7 @@ mod pass;
 mod reporter;
 mod scanner;
 mod token;
+mod type_checking;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = std::env::args().collect();
@@ -30,15 +31,25 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let scanner = scanner::Scanner::new(&file, &reporter);
     let tokens = scanner.scan_tokens()?;
-    // tokens
-    //     .iter()
+    
+    // tokens.iter()
     //     .for_each(|tk| println!("{:?} {}", tk.kind(), tk.lexeme()));
+    
     let mut p = Parser::new(tokens, &reporter);
 
     let sts = p.stmts()?;
     for s in &sts {
         println!("{}", s);
     }
+    
+    TypeChecker::new(&reporter).check(&sts)?;
+    println!("============Shrink============");
+    let sts = Shrink::shrink_stmts(sts);
+    for s in &sts {
+        println!("{}", s);
+    }
+    return Ok(());
+    
     println!("============RCO============");
     let stmts = RemoveComplexOperands::new().rco_stmts(sts);
     for s in &stmts {
