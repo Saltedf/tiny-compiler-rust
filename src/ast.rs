@@ -80,12 +80,13 @@ impl Display for Stmt {
 #[derive(Debug)]
 pub enum StmtData {
     Expr(Expr),
+    
+    Assign { name: Token, binding: Expr },
     If {
 	condition: Expr,
 	then: Vec<Stmt>,
 	else_: Vec<Stmt>,	
     },
-    Assign { name: Token, binding: Expr },
 }
 
 #[derive(Debug)]
@@ -118,7 +119,7 @@ impl Display for Expr {
                 write!(f, "{} {}", op.lexeme(), operands[0])
             },
 	    ExprData::Bool(b) => write!(f,"{}",b),
-	    ExprData::Condition { condition, then, else_ } => write!(f, "{} if {} else {}",condition,then,else_),
+	    ExprData::Condition { condition, then, else_ } => write!(f, "{} if {} else {}",then, condition, else_),
             _ => unimplemented!(), 
         }
     }
@@ -137,7 +138,7 @@ impl Expr {
 
     pub fn is_atom(&self) -> bool {
         match &self.data {
-            ExprData::Int(_) | ExprData::Float(_) | ExprData::Name(_) => true,
+            ExprData::Int(_) | ExprData::Float(_) | ExprData::Name(_) | ExprData::Bool(_) => true,
             _ => false,
         }
     }

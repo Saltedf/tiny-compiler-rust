@@ -15,6 +15,21 @@ pub enum Type {
     }
 }
 
+impl Type {
+    pub fn is_compatible(&self,other: &Self) -> bool  {
+	use Type::*;
+	match (self ,other) {
+	    (Any, _) | (_,Any) => true,
+	    (Unit,Unit) | (Int,Int) | (Float,Float) | (Bool,Bool)  => true,
+	    (Func { params: p1, ret:r1 },  Func { params:p2, ret:r2 }) => {
+		r1.is_compatible(r2)   && p1.iter().zip(p2.iter()).all(|(a,b)|a.is_compatible(b))
+	    },
+	    _ => false,
+	}
+	
+    }
+
+}
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result{
 	use Type::*;
@@ -55,6 +70,14 @@ impl<'r> TypeChecker<'r> {
 	    params: vec![Type::Int],
 	    ret : Type::Unit.into(),
 	});
+	env.insert("input_int".into(),Type::Func{
+	    params: vec![],
+	    ret : Type::Int.into(),
+	});
+	env.insert("print".into(),Type::Func{
+	    params: vec![Type::Any],
+	    ret : Type::Unit.into(),
+	});	
 	Self{
 	    reporter: r,
 	    env,
@@ -66,7 +89,7 @@ impl<'r> TypeChecker<'r> {
     }
 
     fn expect_same_type(&mut self,t1: &Type,t2:&Type , e: &Expr) -> Result<()>{
-	if t1 != t2 {
+	if !t1.is_compatible(t2) {
 	    let msg = format!("{} != {}",t1,t2);
 	    self.reporter.error_range(e,&msg)?;
 	}
@@ -93,6 +116,7 @@ impl<'r> TypeChecker<'r> {
 	    If {condition,then,else_,  } => {
 		let cond = self.check_exp(condition)?;
 		self.expect_same_type(&cond,&Type::Bool,condition)?;
+		
 		// then:
 		self.env.init_scope();
 		self.check_stmts(then)?;

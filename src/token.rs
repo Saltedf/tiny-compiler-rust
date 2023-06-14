@@ -20,8 +20,8 @@ pub enum Kind {
 
     /// One or Two character
     Bang, // !
-    BangEqual,    // !=
     Equal,        // =
+    BangEqual,    // !=
     EqualEqual,   // ==
     Greater,      // >
     GreaterEqual, // >

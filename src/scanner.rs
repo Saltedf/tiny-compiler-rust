@@ -100,6 +100,7 @@ impl<'r> Scanner<'r> {
 	    '>' => self.op_or_opeq(Kind::Greater,Kind::GreaterEqual),
 	    '<' => self.op_or_opeq(Kind::Less,Kind::LessEqual),
 	    
+	    ':' => self.add_token(Kind::Colon),
             '(' => self.add_token(Kind::LeftParen),
             ')' => self.add_token(Kind::RightParen),
 	    '{' => self.add_token(Kind::LeftBrace),

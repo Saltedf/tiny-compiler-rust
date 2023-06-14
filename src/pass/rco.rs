@@ -1,52 +1,12 @@
 use crate::{
     ast::{Expr, ExprData, Range, Stmt, StmtData},
-    env::Env,
+
     token::{Kind, Token},
 };
 
-// pub trait RCO{
-//     type Output;
-//     fn rco(self) -> Self::Output;
-// }
-
-// impl RCO for Stmt {
-
-//     type Output = Stmt;
-
-//     fn rco(self) -> Self::Output {
-// 	match self.stmt {
-// 	    StmtData::Expr(exp) =>{
-// 		if exp.is_atom() {
-// 		    StmtData::Expr(exp)
-// 		} else {
-
-// 		}
-
-// 	    },
-// 	    StmtData::Assign { name, binding }
-// 	}
-//     }
-
-// }
-
-// impl RCO for Expr {
-
-//     type Output = (Expr,Vec<Stmt>);
-
-//     fn rco(self) -> Self::Output {
-// 	if self.is_atom() {
-// 	    return  (self,vec![]);
-// 	}
-// 	match self.data {
-// 	    ExprData::Prim { op, operands } =>
-// 		ExprData::Call {}
-// 	}
-//     }
-
-// }
-
 pub struct RemoveComplexOperands {
     temp: usize,
+
 }
 
 impl RemoveComplexOperands {
@@ -86,8 +46,18 @@ impl RemoveComplexOperands {
                     range,
                 });
                 stmts
-            }
-            _ => todo!(),
+            },
+	    StmtData::If { condition, then, else_ } => {
+		let then = self.rco_stmts(then);
+		let else_ = self.rco_stmts(else_);
+		vec![
+		    Stmt {
+			stmt :  StmtData::If { condition, then, else_ },
+			range,
+		    }
+		]
+	    }
+
         }
     }
 
@@ -116,8 +86,13 @@ impl RemoveComplexOperands {
                     },
                     stmts,
                 )
-            }
-            _ => todo!(),
+            },
+	    d => {
+		(Expr {
+		    data: d,
+		    range,
+		},vec![])
+	    },
         }
     }
 

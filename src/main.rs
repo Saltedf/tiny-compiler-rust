@@ -48,13 +48,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     for s in &sts {
         println!("{}", s);
     }
-    return Ok(());
-    
+
     println!("============RCO============");
     let stmts = RemoveComplexOperands::new().rco_stmts(sts);
     for s in &stmts {
         println!("{}", s);
     }
+    return Ok(());
+    
     println!("============Select Instrucitons===========");
     let instrs = SelectInstructions::new().select_stmts(stmts);
     for inst in &instrs {

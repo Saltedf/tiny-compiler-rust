@@ -59,7 +59,6 @@ impl<'r> Parser<'r> {
     }
 
     fn if_stmt(&mut self) -> Result<Stmt>{
-
 	let cond = self.exp()?;
 	
 	self.expect(Kind::LeftBrace,"Expected `{`")?;
@@ -77,6 +76,7 @@ impl<'r> Parser<'r> {
 	let ifstmt = builder.build();
 	Ok(ifstmt)
     }
+      
 
     fn assignment(&mut self) -> Result<Stmt> {
         let name = self
@@ -96,13 +96,16 @@ impl<'r> Parser<'r> {
     pub fn exp(&mut self) -> Result<Expr> {
         self.condition()
     }
+
+    // if expr:
+    // <expr1> if <condition> else <expr2>
     fn condition(&mut self) -> Result<Expr> {
 	let mut e = self.logical()?;
 	if self.match_any(vec![Kind::If]) {
-	    let then = self.logical()?;
+	    let cond = self.logical()?;
 	    self.expect(Kind::Else,"Expected `else`")?;
 	    let els = self.logical()?;
-	    e =   Expr::condition().condition(e).then(then).else_(els).build();
+	    e =   Expr::condition().condition(cond).then(e).else_(els).build();
 	}
 
 	Ok(e)
