@@ -229,8 +229,10 @@ impl ExprStmt {
 
 pub struct IfStmt {
     pub condition: Option<Expr>,
-    pub then: Vec<Stmt>,
-    pub else_: Vec<Stmt>,    
+    // pub then: Vec<Stmt>,
+    // pub else_: Vec<Stmt>,
+    pub then : Option<Expr>,
+    pub else_ : Option<Expr>,    
     pub ranges: Vec<(usize, usize)>,
 }
 
@@ -241,27 +243,37 @@ impl IfStmt {
         self
     }
 
-    pub fn then(mut self, t: Vec<Stmt>) -> Self {
-	for s in &t {
-            self.ranges.push(s.range());
-	}
-        self.then.extend(t);
+    // pub fn then(mut self, t: Vec<Stmt>) -> Self {
+    // 	for s in &t {
+    //         self.ranges.push(s.range());
+    // 	}
+    //     self.then.extend(t);
+    //     self
+    // }
+    // pub fn else_(mut self, e: Vec<Stmt>) -> Self {
+    // 	for s in &e {
+    //         self.ranges.push(s.range());
+    // 	}
+    //     self.else_.extend(e);
+    //     self
+    // }
+    pub fn then(mut self, t: Expr) -> Self {
+        self.ranges.push(t.range());
+        self.then  = Some(t);
         self
     }
-    pub fn else_(mut self, e: Vec<Stmt>) -> Self {
-	for s in &e {
-            self.ranges.push(s.range());
-	}
-        self.else_.extend(e);
-        self
-    }
+    pub fn else_(mut self, e:Expr ) -> Self {
+        self.ranges.push(e.range());
+        self.else_ = Some(e);
+        self	
+    }    
     
     pub fn build(mut self) -> Stmt {
         let stmt = StmtData::If
 	{
 	    condition:  self.condition.take().expect("`condition` is not initialized."),
-	    then: self.then,
-	    else_ : self.else_,
+	    then: self.then.expect("`then` branch is not initialized"),
+	    else_ : self.else_.expect("`else` branch is not initialized"),
 	};
 
         // normalize the form of range

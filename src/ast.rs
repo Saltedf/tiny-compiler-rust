@@ -42,8 +42,8 @@ impl Stmt {
     pub fn if_stmt() -> IfStmt {
 	IfStmt {
 	    condition: None,
-	    then: vec![],
-	    else_: vec![],
+	    then: None,
+	    else_: None,
             ranges: vec![],
 	}
     }
@@ -59,19 +59,7 @@ impl Display for Stmt {
                 write!(f, "{} = {}", name.lexeme(), binding)
             }
 	    StmtData::If { condition, then, else_ } => {
-		write!(f,"if {} {{\n", condition)?;
-		for s in then {
-		    writeln!(f,"{}", s)?;
-		}
-		write!(f,"}}")?;
-		if !else_.is_empty() {
-		    writeln!(f,"else {{")?;
-		    for s in else_ {
-			writeln!(f,"{}", s)?;
-		    }
-		    write!(f,"}}")?;
-		}
-		Ok(())
+		write!(f,"if ({}) {} else {}",condition,then,else_)
 	    }
         }
     }
@@ -82,10 +70,16 @@ pub enum StmtData {
     Expr(Expr),
     
     Assign { name: Token, binding: Expr },
+    // If {
+    // 	condition: Expr,
+    // 	then: Vec<Stmt>,
+    // 	else_: Vec<Stmt>,	
+    // },
+
     If {
 	condition: Expr,
-	then: Vec<Stmt>,
-	else_: Vec<Stmt>,	
+	then : Expr,
+	else_ : Expr,
     },
 }
 
@@ -120,6 +114,16 @@ impl Display for Expr {
             },
 	    ExprData::Bool(b) => write!(f,"{}",b),
 	    ExprData::Condition { condition, then, else_ } => write!(f, "{} if {} else {}",then, condition, else_),
+	    ExprData::Block { body, result } => {
+		writeln!(f,"{{");
+		for s in body {
+		    writeln!(f,"{}",s)?;
+		}
+		if let Some(r) = result {
+		    writeln!(f,"{}",r)?;
+		}
+		write!(f,"}}")
+	    }
             _ => unimplemented!(), 
         }
     }
@@ -218,6 +222,8 @@ impl Expr {
             ranges: vec![],
         }
     }
+
+
 }
 
 #[derive(Debug)]
@@ -235,9 +241,14 @@ pub enum ExprData {
         name: Box<Expr>,
         args: Vec<Expr>,
     },
+
     Condition {
 	condition: Box<Expr>,	
 	then: Box<Expr>,
 	else_: Box<Expr>,
-    }
+    },
+    Block {
+	body: Vec<Stmt>,
+	result: Option<Box<Expr>>,
+    },
 }

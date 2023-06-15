@@ -119,12 +119,17 @@ impl<'r> TypeChecker<'r> {
 		
 		// then:
 		self.env.init_scope();
-		self.check_stmts(then)?;
+		let t1 = self.check_exp(then)?;
+		//		self.check_stmts(then)?;
 		self.env.exit_scope();
 		// else:
 		self.env.init_scope();		
-		self.check_stmts(else_)?;
-		self.env.exit_scope();		
+		//		self.check_stmts(else_)?;
+		let t2 = self.check_exp(else_)?;
+		self.env.exit_scope();
+		
+		self.expect_same_type(&t1,&t2,then);
+		self.expect_same_type(&t2,&t2,else_)?;		
 	    },
 	    Assign { name, binding } => {
 		let val_ty = self.check_exp(binding)?;
@@ -226,6 +231,14 @@ impl<'r> TypeChecker<'r> {
 		}else {
 		    Err(self.reporter.error_range(e,"cond should be boolean type.").unwrap_err())
 		}
+	    },
+	    ExprData::Block { body, result } => {
+		if let Some(r) = result {
+		    self.check_exp(r)
+		}else {
+		    Ok(Type::Unit)
+		}
+
 	    }
             _ => unimplemented!(), 
         }

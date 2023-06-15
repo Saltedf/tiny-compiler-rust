@@ -4,8 +4,6 @@ use crate::{ast::{Stmt,Expr, ExprData, StmtData}, token::Kind};
 
 pub struct Shrink {
 
-
-
 }
 
 impl Shrink {
@@ -22,8 +20,10 @@ impl Shrink {
 	    StmtData::If { condition, then, else_ } => {
 		StmtData::If {
 		    condition: Self::shrink_expr(condition),
-		    then :Self::shrink_stmts(then),
-		    else_: Self::shrink_stmts(else_),
+		    // then :Self::shrink_stmts(then),
+		    // else_: Self::shrink_stmts(else_),
+		    then: Self::shrink_expr(then),
+		    else_: Self::shrink_expr(else_),
 		}		
 	    }
 	};
@@ -63,6 +63,17 @@ impl Shrink {
 		    range: e.range,
 		}
 	    },
+	    ExprData::Block { body, result } => {
+		let body =Self::shrink_stmts( body);
+		let result = result.and_then(|r| Some(Box::new(Self::shrink_expr(*r))));
+		Expr {
+		    data: ExprData::Block {
+			body,
+			result,
+		    },
+		    range: e.range,
+		}
+	    }
 	    o => {
 		Expr {
 		    data : o,

@@ -1,7 +1,7 @@
 use std::{error::Error, thread::current};
 
 use crate::{
-    ast::{Expr, Stmt},
+    ast::{Expr, Stmt, Range},
     reporter::ErrorReporter,
     token::{self, Kind, Token},
 };
@@ -58,23 +58,36 @@ impl<'r> Parser<'r> {
         }
     }
 
-    fn if_stmt(&mut self) -> Result<Stmt>{
-	let cond = self.exp()?;
+    // fn if_stmt(&mut self) -> Result<Stmt>{
+    // 	let cond = self.exp()?;
 	
-	self.expect(Kind::LeftBrace,"Expected `{`")?;
-	self.expect(Kind::NewLine,"Expected `\n`")?;
-	let then = self.stmts()?;
-	self.expect(Kind::RightBrace,"Expected `}`")?;
-	let mut  builder = Stmt::if_stmt().condition(cond).then(then);
-	if self.match_any(vec![Kind::Else]) {
-	    self.expect(Kind::LeftBrace,"Expected `{`")?;
-	    self.expect(Kind::NewLine,"Expected `\n`")?;
-	    let else_block= self.stmts()?;
-	    self.expect(Kind::RightBrace,"Expected `}`")?;
-	    builder = builder.else_(else_block);
-	}
-	let ifstmt = builder.build();
-	Ok(ifstmt)
+    // 	self.expect(Kind::LeftBrace,"Expected `{`")?;
+    // 	self.expect(Kind::NewLine,"Expected `\n`")?;
+    // 	let then = self.stmts()?;
+    // 	self.expect(Kind::RightBrace,"Expected `}`")?;
+    // 	let mut  builder = Stmt::if_stmt().condition(cond).then(then);
+    // 	if self.match_any(vec![Kind::Else]) {
+    // 	    self.expect(Kind::LeftBrace,"Expected `{`")?;
+    // 	    self.expect(Kind::NewLine,"Expected `\n`")?;
+    // 	    let else_block= self.stmts()?;
+    // 	    self.expect(Kind::RightBrace,"Expected `}`")?;
+    // 	    builder = builder.else_(else_block);
+    // 	}
+    // 	let ifstmt = builder.build();
+    // 	Ok(ifstmt)
+    // }
+
+    fn if_stmt(&mut self) -> Result<Stmt> {
+	let cond = self.exp()?;
+	self.expect(Kind::LeftBrace,"Expected `{`")?;	
+	let then = self.block()?;
+	
+	self.expect(Kind::Else,"Expected `else` branch")?;
+	
+	self.expect(Kind::LeftBrace,"Expected `{`")?;		
+	let els = self.block()?;
+	
+	Ok(Stmt::if_stmt().condition(cond).then(then).else_(els).build())
     }
       
 
@@ -94,7 +107,43 @@ impl<'r> Parser<'r> {
 
     /// expression:
     pub fn exp(&mut self) -> Result<Expr> {
-        self.condition()
+	if self.match_any(vec![Kind::LeftBrace]) {
+	    self.block()
+	}else {
+            self.condition()
+	}
+
+    }
+
+    pub fn block(&mut self) -> Result<Expr> {
+	let open = self.previous().unwrap();
+	while self.match_any(vec![Kind::NewLine]) {
+	}
+	let mut sts = self.stmts()?;
+	while self.match_any(vec![Kind::NewLine]) {
+	}
+	let close = self.expect(Kind::RightBrace,"Expected `}`")?;	
+	let res = sts.pop();
+	let body = sts;
+	
+	let result: Option<Box<Expr>> = res.and_then(|s| {
+	    match s.stmt {
+		crate::ast::StmtData::Expr(e) => {
+		    Some(e.into())
+		},
+		_ => {
+		    None
+		}
+	    }
+	});
+	let range = (open.range().0,close.range().1);
+	Ok(Expr{
+	    data: crate::ast::ExprData::Block{
+		body,
+		result,
+	    },
+	    range,
+	})
     }
 
     // if expr:
@@ -249,18 +298,17 @@ impl<'r> Parser<'r> {
         tk
     }
 
-    fn expect(&mut self, kind: Kind, msg: &str) -> Result<()> {
+    fn expect(&mut self, kind: Kind, msg: &str) -> Result<Token> {
         if let Some(token) = self.peek() {
             if token.kind() == kind {
                 self.advance();
+		return Ok(token)
             } else {
-                self.reporter.error_token(msg, &token)?;
+		return Err(self.reporter.error_token(msg, &token).unwrap_err())
             }
-        } else {
-            self.reporter
-                .error_token("Unexpected EOF.", &self.previous().unwrap())?;
-        }
-        Ok(())
+        } 
+        Err( self.reporter
+             .error_token("Unexpected EOF.", &self.previous().unwrap()).unwrap_err())
     }
 
     #[inline]

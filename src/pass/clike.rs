@@ -2,25 +2,25 @@ use std::collections::HashMap;
 
 use crate::token::Token;
 
-type Label = String;
+pub type Label = String;
 
-struct CProgrom{
+#[derive(Clone)]
+pub struct CProgrom{
     blocks: HashMap<Label,BlockData>,
 }
 
-struct BlockData(Vec<Stmt>, Tail);
+#[derive(Clone)]
+pub struct BlockData(Vec<Stmt>);
 
-
-enum Stmt {
+#[derive(Clone)]
+pub enum Stmt {
     Exp(Expr),
     Assign {
 	name: String,
 	binding: Expr,
-    }
-}
+    },
 
-
-enum Tail {
+    /// tail
     Return(Expr),
     Goto(Label),
     If{
@@ -30,7 +30,27 @@ enum Tail {
     }
 }
 
-enum Expr {
+impl Stmt {
+    pub fn is_tail(&self) -> bool {
+	match self {
+	    Self::Return(_) | Self::Goto(_) | Self::If {..} => true,
+	    _ => false,
+	}
+    }
+}
+
+
+// pub enum Tail {
+//     Return(Expr),
+//     Goto(Label),
+//     If{
+// 	cond: (Token,Atom,Atom),
+// 	then: Label,
+// 	else_: Label,
+//     }
+// }
+#[derive(Clone)]
+pub enum Expr {
     Atom(Atom),
     Prim {
         op: Token,
@@ -46,8 +66,8 @@ enum Expr {
 	else_: Box<Expr>,
     }
 }
-
-enum Atom {
+#[derive(Clone)]
+pub enum Atom {
     Int(i64),
     Float(f64),
     Bool(bool),

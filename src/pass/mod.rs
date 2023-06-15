@@ -7,7 +7,7 @@ pub mod rco;
 pub mod select_instructions;
 pub mod gen;
 pub mod shrink;
-pub mod explicate_control;
+//pub mod explicate_control;
 pub mod clike;
 mod frame;
 mod x86;

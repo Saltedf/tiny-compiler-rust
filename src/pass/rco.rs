@@ -48,8 +48,10 @@ impl RemoveComplexOperands {
                 stmts
             },
 	    StmtData::If { condition, then, else_ } => {
-		let then = self.rco_stmts(then);
-		let else_ = self.rco_stmts(else_);
+		// let then = self.rco_stmts(then);
+		// let else_ = self.rco_stmts(else_);
+		let then = self.rco_exp(then).0;
+		let else_= self.rco_exp(else_).0;
 		vec![
 		    Stmt {
 			stmt :  StmtData::If { condition, then, else_ },
@@ -87,6 +89,24 @@ impl RemoveComplexOperands {
                     stmts,
                 )
             },
+	    ExprData::Block { body, result } => {
+		let mut body = self.rco_stmts(body);
+		let result = if let Some(r) = result {
+		    let (r, st) = self.rco_exp(*r);
+		    body.extend(st);
+		    Some(Box::new(r))
+		}else {
+		    None
+		};
+
+		(
+		    Expr {
+			data: ExprData::Block{body,result},
+			range,
+		    },
+		    vec![]
+		)
+	    },
 	    d => {
 		(Expr {
 		    data: d,
