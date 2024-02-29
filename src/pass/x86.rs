@@ -214,13 +214,13 @@ impl Reg {
         use Reg::*;
         vec![Rax, Rcx, Rdx, Rsi, Rdi, R8, R9, R10, R11]
     }
-    
+
     pub fn is_callee_saved(&self) -> bool {
-	use Reg::*;
-	match self {
-	    Rsp|Rbp| Rbx| R12| R13| R14| R15 => true,
-	    _ =>  false,
-	}
+        use Reg::*;
+        match self {
+            Rsp | Rbp | Rbx | R12 | R13 | R14 | R15 => true,
+            _ => false,
+        }
     }
     pub fn callee_saved() -> Vec<Reg> {
         use Reg::*;

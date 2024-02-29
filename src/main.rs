@@ -1,13 +1,15 @@
-use std::{error::Error, fs::read_to_string, path::PathBuf, process::exit, str::FromStr};
-use parser::Parser;
-use pass::rco::RemoveComplexOperands;
 use crate::{
     pass::{
         allocate::Allocation, assign_homes::AssignHomes, build_interference::BuildInterference,
-        liveness::UncoverLive, patch::PatchInstructions, select_instructions::SelectInstructions, gen::CodeGen, shrink::Shrink,
+        gen::CodeGen, liveness::UncoverLive, patch::PatchInstructions,
+        select_instructions::SelectInstructions, shrink::Shrink,
     },
-    reporter::ErrorReporter, type_checking::TypeChecker,
+    reporter::ErrorReporter,
+    type_checking::TypeChecker,
 };
+use parser::Parser;
+use pass::rco::RemoveComplexOperands;
+use std::{error::Error, fs::read_to_string, path::PathBuf, process::exit, str::FromStr};
 
 mod ast;
 mod ast_builder;
@@ -31,17 +33,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let scanner = scanner::Scanner::new(&file, &reporter);
     let tokens = scanner.scan_tokens()?;
-    
+
     // tokens.iter()
     //     .for_each(|tk| println!("{:?} {}", tk.kind(), tk.lexeme()));
-    
+
     let mut p = Parser::new(tokens, &reporter);
 
     let sts = p.stmts()?;
     for s in &sts {
         println!("{}", s);
     }
-    
+
     TypeChecker::new(&reporter).check(&sts)?;
     println!("============Shrink============");
     let sts = Shrink::shrink_stmts(sts);
@@ -55,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{}", s);
     }
     return Ok(());
-    
+
     println!("============Select Instrucitons===========");
     let instrs = SelectInstructions::new().select_stmts(stmts);
     for inst in &instrs {
@@ -71,10 +73,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     println!("============Interference Graph===========");
-    let (graph,move_graph)  = BuildInterference::new().build_graph(inst_live_after);
+    let (graph, move_graph) = BuildInterference::new().build_graph(inst_live_after);
 
     println!("============Reg Allocation===========");
-    let (mapping,frame) = Allocation::new(graph,move_graph).color_graph();
+    let (mapping, frame) = Allocation::new(graph, move_graph).color_graph();
     for (v, loc) in &mapping {
         println!("{} -> {}", v, loc);
     }
@@ -90,11 +92,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     for inst in &instrs {
         println!("{}", inst);
     }
-    
+
     println!("============Code gen===========");
-    let instrs = CodeGen::new(instrs,frame).code_gen();
+    let instrs = CodeGen::new(instrs, frame).code_gen();
     for inst in &instrs {
         println!("{}", inst);
-    }    
+    }
     Ok(())
 }

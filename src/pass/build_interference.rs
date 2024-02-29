@@ -14,7 +14,7 @@ use super::{
 use petgraph::graph::{EdgeIndex, NodeIndex};
 
 pub type InterferenceGraph = petgraph::graph::UnGraph<Arg, ()>;
-pub type MoveGraph = HashMap<NodeIndex,HashSet<NodeIndex>>;
+pub type MoveGraph = HashMap<NodeIndex, HashSet<NodeIndex>>;
 pub struct BuildInterference {
     graph: InterferenceGraph,
     move_rels: MoveGraph,
@@ -25,7 +25,7 @@ impl BuildInterference {
     pub fn new() -> Self {
         Self {
             graph: petgraph::Graph::new_undirected(),
-	    move_rels: HashMap::new(),
+            move_rels: HashMap::new(),
             nodes: HashMap::new(),
         }
     }
@@ -39,19 +39,19 @@ impl BuildInterference {
             idx
         }
     }
-    fn add_move_rel(&mut self,a: &Arg, b:&Arg) {
-	if a.get_var().is_none() || b.get_var().is_none() {
-	    return;
-	}
-	let si=   self.add_location(a);
-	let di=   self.add_location(b);
-	if let Some(s) = self.move_rels.get_mut(&si){
-	    s.insert(di.clone());
-	} else {
-	    let mut set = HashSet::new();
-	    set.insert(di.clone());
-	    self.move_rels.insert(si,set);
-	}
+    fn add_move_rel(&mut self, a: &Arg, b: &Arg) {
+        if a.get_var().is_none() || b.get_var().is_none() {
+            return;
+        }
+        let si = self.add_location(a);
+        let di = self.add_location(b);
+        if let Some(s) = self.move_rels.get_mut(&si) {
+            s.insert(di.clone());
+        } else {
+            let mut set = HashSet::new();
+            set.insert(di.clone());
+            self.move_rels.insert(si, set);
+        }
     }
 
     fn add_edge(&mut self, a: NodeIndex, b: NodeIndex) -> EdgeIndex {
@@ -66,14 +66,17 @@ impl BuildInterference {
         self.add_edge(a, b);
     }
 
-    pub fn build_graph(mut self, instrs: Vec<(Instr, LiveAfter)>) -> (InterferenceGraph ,MoveGraph){
+    pub fn build_graph(
+        mut self,
+        instrs: Vec<(Instr, LiveAfter)>,
+    ) -> (InterferenceGraph, MoveGraph) {
         for (inst, liveafter) in &instrs {
             match inst {
                 Instr::Movq(s, d) => {
-		    self.add_move_rel(s,d);
+                    self.add_move_rel(s, d);
                     for loc in liveafter.iter().filter(|&l| l != d) {
                         if loc != s && loc != d {
-                              self.interfere_with(d, loc);
+                            self.interfere_with(d, loc);
                         }
                     }
                 }
@@ -91,6 +94,6 @@ impl BuildInterference {
             "{:?}",
             Dot::with_config(&self.graph, &[Config::EdgeNoLabel])
         );
-       ( self.graph,self.move_rels)
+        (self.graph, self.move_rels)
     }
 }

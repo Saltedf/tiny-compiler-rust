@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::format, collections::HashMap};
+use std::{collections::HashMap, error::Error, fmt::format};
 
 use crate::{
     reporter::ErrorReporter,
@@ -18,24 +18,22 @@ pub struct Scanner<'r> {
     /// 生成的Token序列.
     tokens: Vec<Token>,
 
-    keywords : HashMap<&'static str, Kind>,
+    keywords: HashMap<&'static str, Kind>,
 }
 
 impl<'r> Scanner<'r> {
-
-    fn init_keywords() -> HashMap<&'static str,Kind>{
-	let mut keywords = HashMap::new();
-	keywords.insert("not",Kind::Bang);
-	keywords.insert("and",Kind::And);
-	keywords.insert("or",Kind::Or);
-	keywords.insert("if",Kind::If);
-	keywords.insert("else",Kind::Else);
-	keywords.insert("true",Kind::True);
-	keywords.insert("false",Kind::False);		
-	keywords
+    fn init_keywords() -> HashMap<&'static str, Kind> {
+        let mut keywords = HashMap::new();
+        keywords.insert("not", Kind::Bang);
+        keywords.insert("and", Kind::And);
+        keywords.insert("or", Kind::Or);
+        keywords.insert("if", Kind::If);
+        keywords.insert("else", Kind::Else);
+        keywords.insert("true", Kind::True);
+        keywords.insert("false", Kind::False);
+        keywords
     }
     pub fn new(source: &str, reporter: &'r ErrorReporter) -> Self {
-
         Self {
             reporter,
             source: source.chars().collect(),
@@ -43,7 +41,7 @@ impl<'r> Scanner<'r> {
             start: 0,
             current: 0,
             tokens: vec![],
-	    keywords : Self::init_keywords(),
+            keywords: Self::init_keywords(),
         }
     }
     pub fn peek(&self) -> Option<char> {
@@ -89,21 +87,21 @@ impl<'r> Scanner<'r> {
                 self.add_token(Kind::Minus);
             }
             ',' => self.add_token(Kind::Comma),
-            '=' =>self.op_or_opeq(Kind::Equal,Kind::EqualEqual),
+            '=' => self.op_or_opeq(Kind::Equal, Kind::EqualEqual),
 
-	    '!' => {
-		match self.advance() {
-		    Some('=') => self.add_token(Kind::BangEqual),
-		    _ => self.reporter.error("Expected `!=`",self.line,self.current-1,1)?
-		}
-	    },
-	    '>' => self.op_or_opeq(Kind::Greater,Kind::GreaterEqual),
-	    '<' => self.op_or_opeq(Kind::Less,Kind::LessEqual),
-	    
-	    ':' => self.add_token(Kind::Colon),
+            '!' => match self.advance() {
+                Some('=') => self.add_token(Kind::BangEqual),
+                _ => self
+                    .reporter
+                    .error("Expected `!=`", self.line, self.current - 1, 1)?,
+            },
+            '>' => self.op_or_opeq(Kind::Greater, Kind::GreaterEqual),
+            '<' => self.op_or_opeq(Kind::Less, Kind::LessEqual),
+
+            ':' => self.add_token(Kind::Colon),
             '(' => self.add_token(Kind::LeftParen),
             ')' => self.add_token(Kind::RightParen),
-	    '{' => self.add_token(Kind::LeftBrace),
+            '{' => self.add_token(Kind::LeftBrace),
             '}' => self.add_token(Kind::RightBrace),
             'A'..='Z' | 'a'..='z' | '_' => self.expect_ident()?,
             '0'..='9' => self.expect_number()?,
@@ -118,13 +116,13 @@ impl<'r> Scanner<'r> {
     }
 
     fn op_or_opeq(&mut self, op: Kind, opeq: Kind) {
-	match self.peek() {
-	    Some('=') => {
-		self.advance();
-		self.add_token(opeq);
-	    },
-	    _ => self.add_token(op),
-	}
+        match self.peek() {
+            Some('=') => {
+                self.advance();
+                self.add_token(opeq);
+            }
+            _ => self.add_token(op),
+        }
     }
     fn add_token(&mut self, kind: token::Kind) {
         let tk = Token::new(kind, self.current_lexeme(), self.line, self.start);
@@ -156,14 +154,13 @@ impl<'r> Scanner<'r> {
                 _ => break,
             }
         }
-	let kind = self.check_keyword().map_or(Kind::Name, |kw| kw);
+        let kind = self.check_keyword().map_or(Kind::Name, |kw| kw);
         self.add_token(kind);
-	
+
         Ok(())
     }
-    fn check_keyword(&self) -> Option<Kind>{
-	self.keywords.get(self.current_lexeme().as_str()).cloned()
-
+    fn check_keyword(&self) -> Option<Kind> {
+        self.keywords.get(self.current_lexeme().as_str()).cloned()
     }
 
     fn expect_number(&mut self) -> Result<(), Box<dyn Error>> {

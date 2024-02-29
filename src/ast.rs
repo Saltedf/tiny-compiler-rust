@@ -4,17 +4,15 @@ use std::fmt::Formatter;
 use crate::ast_builder::*;
 use crate::token::*;
 
-
-
 pub trait Range {
     // lineno, start , end
-    fn range(&self) -> (usize, usize); 
+    fn range(&self) -> (usize, usize);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Stmt {
     pub stmt: StmtData,
-    
+
     pub range: (usize, usize),
 }
 
@@ -40,12 +38,12 @@ impl Stmt {
         }
     }
     pub fn if_stmt() -> IfStmt {
-	IfStmt {
-	    condition: None,
-	    then: None,
-	    else_: None,
+        IfStmt {
+            condition: None,
+            then: None,
+            else_: None,
             ranges: vec![],
-	}
+        }
     }
 }
 
@@ -58,32 +56,38 @@ impl Display for Stmt {
             StmtData::Assign { name, binding } => {
                 write!(f, "{} = {}", name.lexeme(), binding)
             }
-	    StmtData::If { condition, then, else_ } => {
-		write!(f,"if ({}) {} else {}",condition,then,else_)
-	    }
+            StmtData::If {
+                condition,
+                then,
+                else_,
+            } => {
+                write!(f, "if ({}) {} else {}", condition, then, else_)
+            }
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StmtData {
     Expr(Expr),
-    
-    Assign { name: Token, binding: Expr },
+
+    Assign {
+        name: Token,
+        binding: Expr,
+    },
     // If {
     // 	condition: Expr,
     // 	then: Vec<Stmt>,
-    // 	else_: Vec<Stmt>,	
+    // 	else_: Vec<Stmt>,
     // },
-
     If {
-	condition: Expr,
-	then : Expr,
-	else_ : Expr,
+        condition: Expr,
+        then: Expr,
+        else_: Expr,
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub data: ExprData,
     /// range: (start, end)
@@ -111,20 +115,24 @@ impl Display for Expr {
             }
             ExprData::Prim { op, operands } if operands.len() == 1 => {
                 write!(f, "{} {}", op.lexeme(), operands[0])
-            },
-	    ExprData::Bool(b) => write!(f,"{}",b),
-	    ExprData::Condition { condition, then, else_ } => write!(f, "{} if {} else {}",then, condition, else_),
-	    ExprData::Block { body, result } => {
-		writeln!(f,"{{");
-		for s in body {
-		    writeln!(f,"{}",s)?;
-		}
-		if let Some(r) = result {
-		    writeln!(f,"{}",r)?;
-		}
-		write!(f,"}}")
-	    }
-            _ => unimplemented!(), 
+            }
+            ExprData::Bool(b) => write!(f, "{}", b),
+            ExprData::Condition {
+                condition,
+                then,
+                else_,
+            } => write!(f, "{} if {} else {}", then, condition, else_),
+            ExprData::Block { body, result } => {
+                writeln!(f, "{{");
+                for s in body {
+                    writeln!(f, "{}", s)?;
+                }
+                if let Some(r) = result {
+                    writeln!(f, "{}", r)?;
+                }
+                write!(f, "}}")
+            }
+            _ => unimplemented!(),
         }
     }
 }
@@ -175,14 +183,14 @@ impl Expr {
                 data: ExprData::Name(t),
                 range,
             },
-	    Kind::True => Expr {
+            Kind::True => Expr {
                 data: ExprData::Bool(true),
                 range,
             },
-	    Kind::False => Expr {
+            Kind::False => Expr {
                 data: ExprData::Bool(false),
                 range,
-            },	    
+            },
             _ => {
                 unimplemented!()
             }
@@ -205,7 +213,6 @@ impl Expr {
         }
     }
 
-
     pub fn call() -> FunctionCall {
         FunctionCall {
             func: None,
@@ -216,17 +223,15 @@ impl Expr {
 
     pub fn condition() -> Condition {
         Condition {
-	    condition: None,
+            condition: None,
             then: None,
-            else_: None,	    
+            else_: None,
             ranges: vec![],
         }
     }
-
-
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExprData {
     Int(i64),
     Bool(bool),
@@ -241,14 +246,13 @@ pub enum ExprData {
         name: Box<Expr>,
         args: Vec<Expr>,
     },
-
     Condition {
-	condition: Box<Expr>,	
-	then: Box<Expr>,
-	else_: Box<Expr>,
+        condition: Box<Expr>,
+        then: Box<Expr>,
+        else_: Box<Expr>,
     },
     Block {
-	body: Vec<Stmt>,
-	result: Option<Box<Expr>>,
+        body: Vec<Stmt>,
+        result: Option<Box<Expr>>,
     },
 }

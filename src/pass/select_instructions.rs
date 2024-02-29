@@ -122,8 +122,8 @@ impl SelectInstructions {
                     }
                     _ => unimplemented!(),
                 }
-            },
-	    _ => unimplemented!(),
+            }
+            _ => unimplemented!(),
         }
         instrs
     }
